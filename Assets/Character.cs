@@ -21,8 +21,6 @@ public class Character : MonoBehaviour
     
     protected void TryMove(Vector2Int direction)
     {
-        Debug.Log($"Grid pos checked: {direction + gridPosition}");
-        
         if(!moving && MazeGen.Instance.CheckTile(gridMove = direction + gridPosition))
         {
             moving = true;
@@ -33,7 +31,6 @@ public class Character : MonoBehaviour
     {
         if (moving)
         {
-            Debug.Log("Moving");
             time += Time.deltaTime * 5;
             transform.position = Vector3.Lerp(transform.position, moveTo, time);
             if (time >= 1)

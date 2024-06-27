@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-class dNode
+class BNode
 {
-    public dNode parentNode = null;
+    public BNode parentNode = null;
     public Vector2Int curGridPos = Vector2Int.zero;
 }
 
@@ -15,9 +15,9 @@ public class Enemy : Character
     // Too bad I can't use an actual ctor in this program...
     private bool[,] explored = new bool[65,65];
     
-    private Queue<dNode> searchHorizon = new Queue<dNode>();
+    private Queue<BNode> searchHorizon = new Queue<BNode>();
     private Vector2Int playerPos;
-    private List<dNode> path = new List<dNode>();
+    private List<BNode> path = new List<BNode>();
     private int queueCounter = 0;
     private int pathIndex = 0;
     private float timer = 0;
@@ -32,7 +32,7 @@ public class Enemy : Character
         
         playerPos = MazeGen.Instance.GetPlayerGridPos();
         
-        dNode start = new dNode();
+        BNode start = new BNode();
         start.curGridPos = gridPosition;
             
         searchHorizon.Enqueue(start);
@@ -45,7 +45,7 @@ public class Enemy : Character
 
     private void CheckNode()
     {
-        dNode node = searchHorizon.Dequeue();
+        BNode node = searchHorizon.Dequeue();
         queueCounter++;
         //Debug.Log(queueCounter);
         if (node.curGridPos == playerPos)
@@ -64,7 +64,7 @@ public class Enemy : Character
 
         if (MazeGen.Instance.CheckTile(up) && !explored[up.x, up.y])
         {
-            dNode newNode = new dNode();
+            BNode newNode = new BNode();
             newNode.parentNode = node;
             newNode.curGridPos = up;
             searchHorizon.Enqueue(newNode);
@@ -72,7 +72,7 @@ public class Enemy : Character
         
         if (MazeGen.Instance.CheckTile(down) && !explored[down.x, down.y])
         {
-            dNode newNode = new dNode();
+            BNode newNode = new BNode();
             newNode.parentNode = node;
             newNode.curGridPos = down;
             searchHorizon.Enqueue(newNode);
@@ -80,7 +80,7 @@ public class Enemy : Character
         
         if (MazeGen.Instance.CheckTile(left) && !explored[left.x, left.y])
         {
-            dNode newNode = new dNode();
+            BNode newNode = new BNode();
             newNode.parentNode = node;
             newNode.curGridPos = left;
             searchHorizon.Enqueue(newNode);
@@ -88,16 +88,16 @@ public class Enemy : Character
         
         if (MazeGen.Instance.CheckTile(right) && !explored[right.x, right.y])
         {
-            dNode newNode = new dNode();
+            BNode newNode = new BNode();
             newNode.parentNode = node;
             newNode.curGridPos = right;
             searchHorizon.Enqueue(newNode);
         }
     }
 
-    List<dNode> Retrace(dNode node)
+    List<BNode> Retrace(BNode node)
     {
-        List<dNode> returnPath = new List<dNode>();
+        List<BNode> returnPath = new List<BNode>();
         returnPath.Add(node);
         if (node.parentNode != null)
             returnPath.AddRange(Retrace(node.parentNode));

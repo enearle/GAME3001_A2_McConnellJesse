@@ -372,7 +372,27 @@ PrefabInstance:
       objectReference: {fileID: 2372565404656450927, guid: 272fd5f75b143af439a7a6e0eff70bef, type: 3}
     - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
       propertyPath: randomPasses
-      value: 100
+      value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
+      propertyPath: disableRotations
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
+      propertyPath: powerTwoPassCoef
+      value: 0.74
+      objectReference: {fileID: 0}
+    - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
+      propertyPath: disableTransposes
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
+      propertyPath: disableRandomPasses
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
+      propertyPath: deadEndRemovalPasses
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 3118555422655951884, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
       propertyPath: m_Name

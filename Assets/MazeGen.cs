@@ -1,9 +1,15 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.U2D.Aseprite;
+using Unity.VisualScripting;
 using UnityEngine;
 using Random = UnityEngine.Random;
+
+
+public struct DNode
+{
+    
+}
 
 public class MazeGen : MonoBehaviour
 {
@@ -12,11 +18,18 @@ public class MazeGen : MonoBehaviour
     [SerializeField] private GameObject tilePrefab;
     [SerializeField] private int finalSize = 64;
     [SerializeField] private int randomPasses = 23;
+    [SerializeField, Range(0f, 1f)] private float powerTwoPassCoef = 0.02f;
+    [SerializeField] private int deadEndRemovalPasses = 2; 
     [SerializeField] private float spacing = 0.2f;
     [SerializeField] private bool trueFractal = false;
     [SerializeField] private GameObject playerPrefab;
     [SerializeField] private GameObject enemyPrefab;
+    [SerializeField] private bool disableRandomPasses = false;
+    [SerializeField] private bool disableRotations = false;
+    [SerializeField] private bool disableTransposes = false;
+    [SerializeField] private bool disableDeadEndRemoval = false;
     
+    List<int> removableWalls = new List<int>();
     private Vector2Int playerPos = new Vector2Int(1, 1);
     private List<bool> finalTiles = new List<bool>();
     private Player p;
@@ -53,12 +66,13 @@ public class MazeGen : MonoBehaviour
         foreach (var door in firstDoors)
             firstTiles[door] = false;
 
-        List<bool> fractalTiles = new List<bool>();
-        fractalTiles.Capacity = finalSize * finalSize;
-        fractalTiles = Fractal(firstTiles, 4);
+        List<bool> fractalTiles = fractalTiles = Fractal(firstTiles, 4);
 
-        if(!trueFractal)
+        if (!trueFractal && !disableRandomPasses)
+        {
+            PowerTwoPass(ref fractalTiles);
             RandomPass(ref fractalTiles);
+        }
         
         finalTiles.Capacity = finalSize + 1 * finalSize + 1;
         for(int y = 0; y < finalSize + 1; y++)
@@ -67,6 +81,10 @@ public class MazeGen : MonoBehaviour
                     finalTiles.Add(true);
                 else
                     finalTiles.Add(fractalTiles[y * finalSize + x]);
+        
+        if(!trueFractal && !disableDeadEndRemoval)
+            for (int i = 0; i < deadEndRemovalPasses; i++)
+                DeadEndRemoval(ref finalTiles);
     }
 
     private List<bool> Fractal(List<bool> inPattern, int curSize)
@@ -83,18 +101,25 @@ public class MazeGen : MonoBehaviour
 
         if (!trueFractal)
         {
-            if(RandomBool())
-                Transpose(ref outPattern, curSize + 1, curSize * 2, 1, curSize, curSize * 2);
-            for(int r = 0; r < Random.Range(0, 4); r++)
-                Rotate(ref outPattern, curSize + 1, curSize * 2, 1, curSize, curSize * 2);
-            if(RandomBool())
-                Transpose(ref outPattern, 1, curSize, curSize + 1, curSize * 2, curSize * 2);
-            for(int r = 0; r < Random.Range(0, 4); r++)
-                Rotate(ref outPattern, 1, curSize, curSize + 1, curSize * 2, curSize * 2);
-            if(RandomBool())
-                Transpose(ref outPattern, curSize + 1, curSize * 2, curSize + 1, curSize * 2, curSize * 2);
-            for(int r = 0; r < Random.Range(0, 4); r++)
-                Rotate(ref outPattern, curSize + 1, curSize * 2, curSize + 1, curSize * 2, curSize * 2);
+            if (!disableTransposes)
+            {
+                if(RandomBool())
+                    Transpose(ref outPattern, curSize + 1, curSize * 2, 1, curSize, curSize * 2);
+                if(RandomBool())
+                    Transpose(ref outPattern, 1, curSize, curSize + 1, curSize * 2, curSize * 2);
+                if(RandomBool())
+                    Transpose(ref outPattern, curSize + 1, curSize * 2, curSize + 1, curSize * 2, curSize * 2);                
+            }
+            
+            if (!disableRotations)
+            {
+                for(int r = 0; r < Random.Range(0, 4); r++)
+                    Rotate(ref outPattern, curSize + 1, curSize * 2, 1, curSize, curSize * 2);            
+                for(int r = 0; r < Random.Range(0, 4); r++)
+                    Rotate(ref outPattern, 1, curSize, curSize + 1, curSize * 2, curSize * 2);            
+                for(int r = 0; r < Random.Range(0, 4); r++)
+                    Rotate(ref outPattern, curSize + 1, curSize * 2, curSize + 1, curSize * 2, curSize * 2);                
+            }
         }
         
         int[] doorToFactal =
@@ -121,11 +146,38 @@ public class MazeGen : MonoBehaviour
         
         return Fractal(outPattern, curSize * 2);
     }
+    
+    private void PowerTwoPass(ref List<bool> tiles)
+    {
+        List<bool> editList = new List<bool>(tiles);
+        
+        for(int y = 1; y < finalSize; y += 2)
+            for (int x = 4; x < finalSize; x += 4)
+            {
+                var xPower = Mathf.ClosestPowerOfTwo(x) <= Mathf.ClosestPowerOfTwo(finalSize - x) ? Mathf.ClosestPowerOfTwo(x) : Mathf.ClosestPowerOfTwo(finalSize - x);
+                if (Random.value < xPower * powerTwoPassCoef * 0.01)
+                {
+                    //Debug.Log($"Removed @ {y * finalSize + x}");
+                    editList[y * finalSize + x] = false;
+                }
+            }
+        
+        for(int y = 4; y < finalSize; y += 4)
+            for (int x = 1; x < finalSize; x += 2)
+            {
+                var yPower = Mathf.ClosestPowerOfTwo(y) <= Mathf.ClosestPowerOfTwo(finalSize - y) ? Mathf.ClosestPowerOfTwo(y) : Mathf.ClosestPowerOfTwo(finalSize - y);
+                if (Random.value < yPower * powerTwoPassCoef * 0.01)
+                {
+                    //Debug.Log($"Removed @ {y * finalSize + x}");
+                    editList[y * finalSize + x] = false;
+                }
+            }
 
+        tiles = new List<bool>(editList);
+    }
+    
     private void RandomPass(ref List<bool> tiles)
     {
-        List<int> removableWalls = new List<int>();
-        
         for(int y = 1; y < finalSize; y++ )
             for (int x = 1; x < finalSize; x += 2)
             {
@@ -134,7 +186,7 @@ public class MazeGen : MonoBehaviour
                 else if (tiles[y * finalSize + x])
                     removableWalls.Add(y * finalSize + x);
             }
-
+        
         for (int i = 0; i < randomPasses; i++)
         {
             if (removableWalls.Count > 0)
@@ -146,6 +198,44 @@ public class MazeGen : MonoBehaviour
         }
     }
 
+    private void DeadEndRemoval(ref List<bool> tiles)
+    {
+        for(int i = 0; i < 2; i++)
+            for(int y = 1; y < finalSize + 1; y += 4)
+                for (int x = 1 + (y + i) % 2 * 2 ; x < finalSize + 1; x += 4)
+                {
+                    bool up = false;
+                    bool down = false;
+                    bool left = false;
+                    bool right = false;
+
+                    int neighborCount = 0;
+
+                    if (up = !tiles[(y + 1) * (finalSize + 1) + x])
+                        neighborCount++;
+                    if (down = !tiles[(y - 1) * (finalSize + 1) + x])
+                        neighborCount++;
+                    if (left = !tiles[y * (finalSize + 1) + x - 1])
+                        neighborCount++;
+                    if (right = !tiles[y * (finalSize + 1) + x + 1])
+                        neighborCount++;
+                    
+                    if (neighborCount == 1 && x + y != 2 && x + y != finalSize + finalSize - 2)
+                    {
+                        if (up)
+                            tiles[(y + 1) * (finalSize + 1) + x] = true;
+                        if (down)
+                            tiles[(y - 1) * (finalSize + 1) + x] = true;
+                        if (left)
+                            tiles[y * (finalSize + 1) + x - 1] = true;
+                        if (right)
+                            tiles[y * (finalSize + 1) + x + 1] = true;
+                        
+                        tiles[y * (finalSize + 1) + x ] = true;
+                    }
+                }
+    }
+
     private void Transpose(ref List<bool> tiles, int xStart, int xEnd, int yStart, int yEnd, int curSize)
     {
         for (int y = 0; y < curSize / 2 - 1; y++)
@@ -154,7 +244,6 @@ public class MazeGen : MonoBehaviour
                 (tiles[(yEnd - x - 1) * curSize + xEnd - y - 1], tiles[(y + yStart) * curSize + x + xStart]) 
                     = (tiles[(y + yStart) * curSize + x + xStart], tiles[(yEnd - x - 1) * curSize + xEnd - y - 1]);
             }
-
     }
 
     private void Rotate(ref List<bool> tiles, int xStart, int xEnd, int yStart, int yEnd, int curSize)
@@ -217,6 +306,8 @@ public class MazeGen : MonoBehaviour
         else
             return !finalTiles[tile.y * (finalSize + 1) + tile.x];
     }
+    
+    
 
     public float MoveScale()
     {
