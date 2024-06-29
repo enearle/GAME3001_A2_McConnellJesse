@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -22,7 +23,7 @@ public class Enemy : Character
     private int pathIndex = 0;
     private float timer = 0;
     private const float resetTime = 3;
-    
+
     private void StartPath()
     {
         path.Clear();

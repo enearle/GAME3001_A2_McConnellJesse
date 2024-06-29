@@ -5,34 +5,55 @@ using Unity.VisualScripting;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-
-public struct DNode
+public class Tile
 {
-    
+    public bool isWall;
+    public int cost;
+    public Color colour;
+
+    public Tile(bool w, int c, Color col)
+    {
+        isWall = w;
+        cost = c;
+        colour = col;
+    }
 }
+
 
 public class MazeGen : MonoBehaviour
 {
     public static MazeGen Instance;
     
     [SerializeField] private GameObject tilePrefab;
-    [SerializeField] private int finalSize = 64;
-    [SerializeField] private int randomPasses = 23;
-    [SerializeField, Range(0f, 1f)] private float powerTwoPassCoef = 0.02f;
-    [SerializeField] private int deadEndRemovalPasses = 2; 
-    [SerializeField] private float spacing = 0.2f;
-    [SerializeField] private bool trueFractal = false;
+    [SerializeField, Range(32, 1024), Tooltip("Size of grid. Grid = (N+1)^2")] 
+    private int finalSize = 64;
+    [SerializeField, Tooltip("Number of walls tiles removed at random.")] 
+    private int randomPasses = 23;
+    [SerializeField, Range(0f, 1f), Tooltip("Weighted random removal that targets fractal edges.")] 
+    private float powerTwoPassCoef = 0.02f;
+    [SerializeField, Tooltip("Removes dead-ends. Number of unbiased passes over entire grid. I don't think if biasing matters here, but I prevented it anyway.")] 
+    private int deadEndRemovalPasses = 2; 
+    [SerializeField, Tooltip("Tile scale.")] 
+    private float spacing = 0.2f;
+    [SerializeField, Tooltip("Revert to base Fractal Maze algorithm.")] 
+    private bool trueFractal = false;
+    [SerializeField, Tooltip("Use 5 space per second move speed.")] 
+    private bool flatMoveSpeed = false;
+    [SerializeField] private bool debug = false;
     [SerializeField] private GameObject playerPrefab;
     [SerializeField] private GameObject enemyPrefab;
     [SerializeField] private bool disableRandomPasses = false;
     [SerializeField] private bool disableRotations = false;
     [SerializeField] private bool disableTransposes = false;
     [SerializeField] private bool disableDeadEndRemoval = false;
-    
-    List<int> removableWalls = new List<int>();
+    private List<int> explored = new List<int>();
+    public bool Debug { get { return debug; } private set {}}
+    private List<int> removableWalls = new List<int>();
     private Vector2Int playerPos = new Vector2Int(1, 1);
-    private List<bool> finalTiles = new List<bool>();
+    private Vector2Int enemyPos;
+    private List<Tile> finalTiles = new List<Tile>();
     private Player p;
+    private DijkstraEnemy d;
     
     private void Awake()
     {
@@ -46,7 +67,8 @@ public class MazeGen : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-        
+
+        enemyPos = new Vector2Int(finalSize - 1, finalSize - 1);
         List<bool> firstTiles = new List<bool>();
         firstTiles.Capacity = 16;
         
@@ -73,18 +95,66 @@ public class MazeGen : MonoBehaviour
             PowerTwoPass(ref fractalTiles);
             RandomPass(ref fractalTiles);
         }
+
+        List<Vector2Int> voronoiNodes = GenerateVoronoiNodes();
         
         finalTiles.Capacity = finalSize + 1 * finalSize + 1;
         for(int y = 0; y < finalSize + 1; y++)
             for(int x = 0; x < finalSize + 1; x++)
-                if(x == finalSize || y == finalSize)
-                    finalTiles.Add(true);
+                if((x == finalSize || y == finalSize) || fractalTiles[y * finalSize + x])
+                    finalTiles.Add(new Tile(true, Int32.MaxValue, Color.black));
                 else
-                    finalTiles.Add(fractalTiles[y * finalSize + x]);
+                    if(debug)
+                        finalTiles.Add(new Tile(false, (int)Mathf.Round(DistToNearestVNode(voronoiNodes, new Vector2Int(x,y))), 
+                                new Color(1, 
+                                    0.5f, 
+                                    1)
+                            )
+                        );
+                    else
+                        finalTiles.Add(new Tile(false, (int)Mathf.Round(DistToNearestVNode(voronoiNodes, new Vector2Int(x,y))), 
+                                new Color(1 - DistToNearestVNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f, 
+                                    1 - DistToNearestVNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f / 2, 
+                                    0.5f + DistToNearestVNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f / 2)
+                            )
+                        );
         
         if(!trueFractal && !disableDeadEndRemoval)
             for (int i = 0; i < deadEndRemovalPasses; i++)
                 DeadEndRemoval(ref finalTiles);
+    }
+        
+    private void Start()
+    {
+        for (int i = 0; i < (finalSize + 1) * (finalSize + 1); i++)
+        {
+            Vector2 location;
+            location.x = (i % (finalSize + 1)) * spacing;
+            location.y = (i / (finalSize + 1)) * spacing;
+            GameObject t = Instantiate(tilePrefab, transform.position + (Vector3)location, Quaternion.identity);
+            t.transform.localScale *= spacing;
+            SpriteRenderer sr = t.GetComponentInChildren<SpriteRenderer>();
+            sr.color = finalTiles[i].colour;
+        }
+        
+        p = Instantiate(playerPrefab).GetComponent<Player>();
+        p.Initialize(playerPos, transform.position + (Vector3)(Vector2)playerPos * spacing);
+
+        d = Instantiate(enemyPrefab).GetComponent<DijkstraEnemy>();
+        d.Initialize(enemyPos, 
+            transform.position + (Vector3)(Vector2)enemyPos * spacing);
+        d.Begin();
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            d.Initialize(enemyPos, 
+                transform.position + (Vector3)(Vector2)enemyPos * spacing);
+            d.ResetTimer();
+            d.Begin();
+        }
     }
 
     private List<bool> Fractal(List<bool> inPattern, int curSize)
@@ -104,21 +174,21 @@ public class MazeGen : MonoBehaviour
             if (!disableTransposes)
             {
                 if(RandomBool())
-                    Transpose(ref outPattern, curSize + 1, curSize * 2, 1, curSize, curSize * 2);
+                    TransposeMatrix(ref outPattern, curSize + 1, curSize * 2, 1, curSize, curSize * 2);
                 if(RandomBool())
-                    Transpose(ref outPattern, 1, curSize, curSize + 1, curSize * 2, curSize * 2);
+                    TransposeMatrix(ref outPattern, 1, curSize, curSize + 1, curSize * 2, curSize * 2);
                 if(RandomBool())
-                    Transpose(ref outPattern, curSize + 1, curSize * 2, curSize + 1, curSize * 2, curSize * 2);                
+                    TransposeMatrix(ref outPattern, curSize + 1, curSize * 2, curSize + 1, curSize * 2, curSize * 2);                
             }
             
             if (!disableRotations)
             {
                 for(int r = 0; r < Random.Range(0, 4); r++)
-                    Rotate(ref outPattern, curSize + 1, curSize * 2, 1, curSize, curSize * 2);            
+                    RotateMatrix(ref outPattern, curSize + 1, curSize * 2, 1, curSize, curSize * 2);            
                 for(int r = 0; r < Random.Range(0, 4); r++)
-                    Rotate(ref outPattern, 1, curSize, curSize + 1, curSize * 2, curSize * 2);            
+                    RotateMatrix(ref outPattern, 1, curSize, curSize + 1, curSize * 2, curSize * 2);            
                 for(int r = 0; r < Random.Range(0, 4); r++)
-                    Rotate(ref outPattern, curSize + 1, curSize * 2, curSize + 1, curSize * 2, curSize * 2);                
+                    RotateMatrix(ref outPattern, curSize + 1, curSize * 2, curSize + 1, curSize * 2, curSize * 2);                
             }
         }
         
@@ -157,7 +227,6 @@ public class MazeGen : MonoBehaviour
                 var xPower = Mathf.ClosestPowerOfTwo(x) <= Mathf.ClosestPowerOfTwo(finalSize - x) ? Mathf.ClosestPowerOfTwo(x) : Mathf.ClosestPowerOfTwo(finalSize - x);
                 if (Random.value < xPower * powerTwoPassCoef * 0.01)
                 {
-                    //Debug.Log($"Removed @ {y * finalSize + x}");
                     editList[y * finalSize + x] = false;
                 }
             }
@@ -168,7 +237,6 @@ public class MazeGen : MonoBehaviour
                 var yPower = Mathf.ClosestPowerOfTwo(y) <= Mathf.ClosestPowerOfTwo(finalSize - y) ? Mathf.ClosestPowerOfTwo(y) : Mathf.ClosestPowerOfTwo(finalSize - y);
                 if (Random.value < yPower * powerTwoPassCoef * 0.01)
                 {
-                    //Debug.Log($"Removed @ {y * finalSize + x}");
                     editList[y * finalSize + x] = false;
                 }
             }
@@ -198,45 +266,67 @@ public class MazeGen : MonoBehaviour
         }
     }
 
-    private void DeadEndRemoval(ref List<bool> tiles)
+    private void DeadEndRemoval(ref List<Tile> tiles)
     {
         for(int i = 0; i < 2; i++)
-            for(int y = 1; y < finalSize + 1; y += 4)
+            for(int y = 1; y < finalSize + 1; y += 2)
                 for (int x = 1 + (y + i) % 2 * 2 ; x < finalSize + 1; x += 4)
                 {
-                    bool up = false;
-                    bool down = false;
-                    bool left = false;
-                    bool right = false;
+                    bool up = !tiles[(y + 1) * (finalSize + 1) + x].isWall;
+                    bool down = !tiles[(y - 1) * (finalSize + 1) + x].isWall;
+                    bool left = !tiles[y * (finalSize + 1) + x - 1].isWall;
+                    bool right = !tiles[y * (finalSize + 1) + x + 1].isWall;
 
                     int neighborCount = 0;
 
-                    if (up = !tiles[(y + 1) * (finalSize + 1) + x])
+                    if (up)
                         neighborCount++;
-                    if (down = !tiles[(y - 1) * (finalSize + 1) + x])
+                    if (down)
                         neighborCount++;
-                    if (left = !tiles[y * (finalSize + 1) + x - 1])
+                    if (left)
                         neighborCount++;
-                    if (right = !tiles[y * (finalSize + 1) + x + 1])
+                    if (right)
                         neighborCount++;
-                    
+
                     if (neighborCount == 1 && x + y != 2 && x + y != finalSize + finalSize - 2)
                     {
                         if (up)
-                            tiles[(y + 1) * (finalSize + 1) + x] = true;
+                        {
+                            tiles[(y + 1) * (finalSize + 1) + x].isWall = true;
+                            tiles[(y + 1) * (finalSize + 1) + x].colour = Color.black;
+                            tiles[(y + 1) * (finalSize + 1) + x].cost = Int32.MaxValue;
+                        }
+
                         if (down)
-                            tiles[(y - 1) * (finalSize + 1) + x] = true;
+                        {
+                            tiles[(y - 1) * (finalSize + 1) + x].isWall = true;
+                            tiles[(y - 1) * (finalSize + 1) + x].colour = Color.black;
+                            tiles[(y - 1) * (finalSize + 1) + x].cost = Int32.MaxValue;
+                        }
+
                         if (left)
-                            tiles[y * (finalSize + 1) + x - 1] = true;
+                        {
+                            tiles[y * (finalSize + 1) + x - 1].isWall = true;
+                            tiles[y * (finalSize + 1) + x - 1].colour = Color.black;
+                            tiles[y * (finalSize + 1) + x - 1].cost = Int32.MaxValue;
+                        }
+
                         if (right)
-                            tiles[y * (finalSize + 1) + x + 1] = true;
+                        {
+                            tiles[y * (finalSize + 1) + x + 1].isWall = true;
+                            tiles[y * (finalSize + 1) + x + 1].colour = Color.black;
+                            tiles[y * (finalSize + 1) + x + 1].cost = Int32.MaxValue;
+                        }
+                            
                         
-                        tiles[y * (finalSize + 1) + x ] = true;
+                        tiles[y * (finalSize + 1) + x ].isWall = true;
+                        tiles[y * (finalSize + 1) + x ].colour = Color.black;
+                        tiles[y * (finalSize + 1) + x ].cost = Int32.MaxValue;
                     }
                 }
     }
 
-    private void Transpose(ref List<bool> tiles, int xStart, int xEnd, int yStart, int yEnd, int curSize)
+    private void TransposeMatrix(ref List<bool> tiles, int xStart, int xEnd, int yStart, int yEnd, int curSize)
     {
         for (int y = 0; y < curSize / 2 - 1; y++)
             for (int x = 0; x < curSize / 2 - y - 2; x++)
@@ -246,7 +336,7 @@ public class MazeGen : MonoBehaviour
             }
     }
 
-    private void Rotate(ref List<bool> tiles, int xStart, int xEnd, int yStart, int yEnd, int curSize)
+    private void RotateMatrix(ref List<bool> tiles, int xStart, int xEnd, int yStart, int yEnd, int curSize)
     {
         List<bool> newTiles = new List<bool>();
         foreach (var t in tiles)
@@ -268,47 +358,57 @@ public class MazeGen : MonoBehaviour
     {
         return Random.Range(0, 2) % 2 == 1;
     }
-    
-    private void Start()
-    {
-        for (int i = 0; i < (finalSize + 1) * (finalSize + 1); i++)
-        {
-            Vector2 location;
-            location.x = (i % (finalSize + 1)) * spacing;
-            location.y = (i / (finalSize + 1)) * spacing;
-            GameObject t = Instantiate(tilePrefab, transform.position + (Vector3)location, Quaternion.identity);
-            t.transform.localScale *= spacing;
-            if (finalTiles[i])
-            {
-                SpriteRenderer sr = t.GetComponentInChildren<SpriteRenderer>();
-                sr.color = Color.black;
-            }
-        }
-        
-        p = Instantiate(playerPrefab).GetComponent<Player>();
-        p.Initialize(playerPos, transform.position + (Vector3)(Vector2)playerPos * spacing);
-
-        Enemy e = Instantiate(enemyPrefab).GetComponent<Enemy>();
-        e.Initialize(new Vector2Int(finalSize - 1, finalSize - 1), 
-            transform.position + new Vector3(finalSize - 1,finalSize - 1) * spacing);
-        e.Begin();
-
-    }
 
     public bool CheckTile(Vector2Int tile)
     {
         
         if (tile.y * (finalSize + 1) + tile.x >= finalTiles.Count || tile.y * (finalSize + 1) + tile.x < 0)
         {
-            Debug.Log($"Out of range. Final tiles: {finalTiles.Count} Index: {tile.y * (finalSize + 1) + tile.x}");
             return false;
         }
         else
-            return !finalTiles[tile.y * (finalSize + 1) + tile.x];
+            return !finalTiles[tile.y * (finalSize + 1) + tile.x].isWall;
+    }
+
+    private List<Vector2Int> GenerateVoronoiNodes()
+    {
+        List<Vector2Int> outVNodes = new List<Vector2Int>();
+        for(int y = 0; y < finalSize; y += 32 )
+            for (int x = 0; x < finalSize; x += 32)
+            {
+                outVNodes.Add(new Vector2Int(x + Random.Range(8, 24), y + Random.Range(8, 24)));
+            }
+
+        return outVNodes;
+    }
+
+    private float DistToNearestVNode(List<Vector2Int> inVNodes, Vector2Int curTilePos)
+    {
+        float shortest = (curTilePos - inVNodes[0]).magnitude;
+
+        for (int i = 1; i < inVNodes.Count; i++)
+        {
+            float distance = (curTilePos - inVNodes[i]).magnitude;
+            if (distance < shortest)
+                shortest = distance;
+            
+        }
+        return shortest;
+    }
+
+    public int GetTileCost(Vector2Int tile)
+    {
+        return finalTiles[tile.y * (finalSize + 1) + tile.x].cost;
     }
     
+    public int GetMoveCost(Vector2Int tile)
+    {
+        if (flatMoveSpeed)
+            return 1;
+        
+        return 1 + finalTiles[tile.y * (finalSize + 1) + tile.x].cost / 10;
+    }
     
-
     public float MoveScale()
     {
         return spacing;
