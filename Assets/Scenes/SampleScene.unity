@@ -352,16 +352,16 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
       propertyPath: spacing
-      value: 0.154
+      value: 0.0775
       objectReference: {fileID: 0}
     - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
       propertyPath: finalSize
-      value: 64
+      value: 128
       objectReference: {fileID: 0}
     - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
       propertyPath: enemyPrefab
       value: 
-      objectReference: {fileID: 6909530527037803825, guid: 6c0552d743c0cff48abe8a5682084533, type: 3}
+      objectReference: {fileID: 6909530527037803825, guid: 0fa05c717e0c974459b89da88b618eed, type: 3}
     - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
       propertyPath: trueFractal
       value: 0
@@ -372,7 +372,7 @@ PrefabInstance:
       objectReference: {fileID: 2372565404656450927, guid: 272fd5f75b143af439a7a6e0eff70bef, type: 3}
     - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
       propertyPath: randomPasses
-      value: 16
+      value: 64
       objectReference: {fileID: 0}
     - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
       propertyPath: disableRotations
@@ -380,7 +380,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
       propertyPath: powerTwoPassCoef
-      value: 0.74
+      value: 0.343
       objectReference: {fileID: 0}
     - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
       propertyPath: disableTransposes
@@ -393,6 +393,10 @@ PrefabInstance:
     - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
       propertyPath: deadEndRemovalPasses
       value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: -4782875537555699907, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
+      propertyPath: disableDeadEndRemoval
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3118555422655951884, guid: 2ee4758540742e044a94bc2fc7d3bbdb, type: 3}
       propertyPath: m_Name

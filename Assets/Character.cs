@@ -16,7 +16,7 @@ public class Character : MonoBehaviour
     {
         gridPosition = gridPos;
         transform.position = pos;
-        transform.localScale *= MazeGen.Instance.MoveScale();
+        transform.localScale  = Vector3.one * MazeGen.Instance.MoveScale();
     }
     
     protected void TryMove(Vector2Int direction)
@@ -31,7 +31,7 @@ public class Character : MonoBehaviour
     {
         if (moving)
         {
-            time += Time.deltaTime * 5;
+            time += Time.deltaTime * 5 / MazeGen.Instance.GetMoveCost(gridPosition);
             transform.position = Vector3.Lerp(transform.position, moveTo, time);
             if (time >= 1)
             {
