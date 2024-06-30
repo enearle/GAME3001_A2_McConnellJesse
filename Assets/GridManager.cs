@@ -153,20 +153,20 @@ public class GridManager : MonoBehaviour
         {
             screenPosition = Input.mousePosition;
             worldPosition = mainCamera.ScreenToWorldPoint(screenPosition) + new Vector3(0, 0, 10);
-
-            int closestIndex = finalSize + 2;
-            Vector3 closestPos = new Vector3(1, 1) * spacing + transform.position;
+            
+            worldPosition -= transform.position;
+            worldPosition /= spacing;
+            
+            Vector3 closestPos = new Vector3(1, 1) * spacing;
+            
             for (int i = 0; i < finalTiles.Count; i++)
             {
                 
-                Vector3 tilePos = new Vector3(i % (finalSize + 1), (float)i / (finalSize + 1)) * spacing +
-                                  transform.position;
+                Vector3 tilePos = new Vector3(i % (finalSize + 1), (float)i / (finalSize + 1));
                 if (!finalTiles[i].isWall &&
                     (tilePos - worldPosition).magnitude < (closestPos - worldPosition).magnitude)
                 {
-                    closestPos = new Vector3(i % (finalSize + 1), (float)i / (finalSize + 1)) * spacing +
-                                 transform.position;
-                    closestIndex = i;
+                    closestPos = new Vector3(i % (finalSize + 1), (float)i / (finalSize + 1));
                 }
             }
             

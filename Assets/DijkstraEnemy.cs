@@ -59,6 +59,7 @@ public class DijkstraEnemy : Character
 
         if (gridPosition == path[pathIndex].curGridPos)
             pathIndex++;
+
         
         TryMove(path[pathIndex].curGridPos - gridPosition);
 
@@ -166,6 +167,6 @@ public class DijkstraEnemy : Character
         chasingCursor = true;
         goal = pos;
         StartPath();
-        Debug.Log("Click");
+        Debug.Log(pos);
     }
 }
