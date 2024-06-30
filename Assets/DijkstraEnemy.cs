@@ -15,7 +15,7 @@ class DNode
 public class DijkstraEnemy : Character
 {
     private PriorityQueue<DNode, int> searchHorizon = new PriorityQueue<DNode, int>();
-    private Vector2Int playerPos;
+    private Vector2Int goal;
     private List<DNode> path = new List<DNode>();
     private List<DNode> nodes = new List<DNode>();
     private int queueCounter = 0;
@@ -25,6 +25,7 @@ public class DijkstraEnemy : Character
     private int size;
     private bool found = false;
     private int originNode;
+    private bool chasingCursor = false;
     
     private void Awake()
     {
@@ -37,20 +38,31 @@ public class DijkstraEnemy : Character
     
     protected override void Update()
     {
-        timer += Time.deltaTime;
-        
-        if (timer >= resetTime)
+        if (!chasingCursor)
         {
+            timer += Time.deltaTime;
+            
+            if (timer >= resetTime)
+            {
+                ResetTimer();
+                StartPath();
+            }
+        }
+
+        if (pathIndex >= path.Count)
+        {
+            chasingCursor = false;
             ResetTimer();
             StartPath();
         }
+
 
         if (gridPosition == path[pathIndex].curGridPos)
             pathIndex++;
         
         TryMove(path[pathIndex].curGridPos - gridPosition);
 
-        if(GridManager.Instance.Debug)
+        if(GridManager.Instance.IsDebug)
             foreach (var dn in path)
                 if(dn.parentNode != originNode)
                     Debug.DrawLine(GridManager.Instance.transform.position + Vector3.back + (Vector3)(Vector2)nodes[dn.parentNode].curGridPos * GridManager.Instance.MoveScale(),
@@ -73,7 +85,8 @@ public class DijkstraEnemy : Character
         originNode = gridPosition.y * size + gridPosition.x;
         found = false;
         
-        playerPos = GridManager.Instance.GetPlayerGridPos();
+        if(!chasingCursor)
+            goal = GridManager.Instance.GetPlayerGridPos();
         
         nodes[0].cost = 0;
         nodes[0].parentNode = -1;
@@ -93,7 +106,7 @@ public class DijkstraEnemy : Character
         DNode node = searchHorizon.Dequeue();
         queueCounter++;
         
-        if (node.curGridPos == playerPos)
+        if (node.curGridPos == goal)
         {
             path = Retrace(node); 
             path.Reverse();
@@ -146,5 +159,13 @@ public class DijkstraEnemy : Character
     public void ResetTimer()
     {
         timer -= resetTime;
+    }
+
+    public void SetCursorAsGoal(Vector2Int pos)
+    {
+        chasingCursor = true;
+        goal = pos;
+        StartPath();
+        Debug.Log("Click");
     }
 }

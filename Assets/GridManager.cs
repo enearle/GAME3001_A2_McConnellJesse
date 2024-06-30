@@ -1,8 +1,8 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Serialization;
+using UnityEngine.Tilemaps;
 using Random = UnityEngine.Random;
 
 public class DTile
@@ -19,7 +19,6 @@ public class DTile
     }
 }
 
-
 public class GridManager : MonoBehaviour
 {
     public static GridManager Instance;
@@ -31,7 +30,7 @@ public class GridManager : MonoBehaviour
     private int randomPasses = 23;
     [SerializeField, Range(0f, 1f), Tooltip("Weighted random removal that targets fractal edges.")] 
     private float powerTwoPassCoef = 0.02f;
-    [SerializeField, Tooltip("Removes dead-ends. Number of unbiased passes over entire grid. I don't think if biasing matters here, but I prevented it anyway.")] 
+    [SerializeField, Tooltip("Removes dead-ends. Number of unbiased passes over entire grid. I don't think biasing matters here, but I prevented it anyway.")] 
     private int deadEndRemovalPasses = 2; 
     [SerializeField, Tooltip("Tile scale.")] 
     private float spacing = 0.2f;
@@ -39,21 +38,28 @@ public class GridManager : MonoBehaviour
     private bool trueFractal = false;
     [SerializeField, Tooltip("Use 5 space per second move speed.")] 
     private bool flatMoveSpeed = false;
-    [SerializeField] private bool debug = false;
+    [FormerlySerializedAs("debug")] [SerializeField] private bool isDebug = false;
     [SerializeField] private GameObject playerPrefab;
     [SerializeField] private GameObject enemyPrefab;
     [SerializeField] private bool disableRandomPasses = false;
     [SerializeField] private bool disableRotations = false;
     [SerializeField] private bool disableTransposes = false;
     [SerializeField] private bool disableDeadEndRemoval = false;
+    [SerializeField] private Tilemap floors;
+    [SerializeField] private Tilemap walls;
+    [SerializeField] private Grid grid;
+    [SerializeField] private Sprite[] sprites;
     private List<int> explored = new List<int>();
-    public bool Debug { get { return debug; } private set {}}
+    public bool IsDebug { get { return isDebug; } private set {}}
     private List<int> removableWalls = new List<int>();
     private Vector2Int playerPos = new Vector2Int(1, 1);
     private Vector2Int enemyPos;
     private List<DTile> finalTiles = new List<DTile>();
     private Player p;
     private DijkstraEnemy d;
+    private Vector3 screenPosition;
+    private Vector3 worldPosition;
+    private Camera mainCamera;
     
     private void Awake()
     {
@@ -69,6 +75,8 @@ public class GridManager : MonoBehaviour
         }
 
         enemyPos = new Vector2Int(finalSize - 1, finalSize / 4 * 3 - 1);
+        mainCamera = Camera.main;
+        
         List<bool> firstTiles = new List<bool>();
         firstTiles.Capacity = 16;
         
@@ -88,7 +96,7 @@ public class GridManager : MonoBehaviour
         foreach (var door in firstDoors)
             firstTiles[door] = false;
 
-        List<bool> fractalTiles = fractalTiles = Fractal(firstTiles, 4);
+        List<bool> fractalTiles = Fractal(firstTiles, 4);
 
         if (!trueFractal && !disableRandomPasses)
         {
@@ -106,20 +114,12 @@ public class GridManager : MonoBehaviour
                 if((x == finalSize || y == finalSize / 4 * 3) || fractalTiles[y * finalSize + x])
                     finalTiles.Add(new DTile(true, Int32.MaxValue, Color.black));
                 else
-                    if(debug)
-                        finalTiles.Add(new DTile(false, (int)Mathf.Round(DistToNearestVNode(voronoiNodes, new Vector2Int(x,y))), 
-                                new Color(1, 
-                                    0.5f, 
-                                    1)
-                            )
-                        );
-                    else
-                        finalTiles.Add(new DTile(false, (int)Mathf.Round(DistToNearestVNode(voronoiNodes, new Vector2Int(x,y))), 
-                                new Color(1 - DistToNearestVNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f, 
-                                    1 - DistToNearestVNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f / 2, 
-                                    0.5f + DistToNearestVNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f / 2)
-                            )
-                        );
+                    finalTiles.Add(new DTile(false, (int)Mathf.Round(DistToNearestVNode(voronoiNodes, new Vector2Int(x,y))), 
+                            new Color(1, 
+                                1 - DistToNearestVNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f, 
+                                1 - DistToNearestVNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f)
+                        )
+                    );
         
         if(!trueFractal && !disableDeadEndRemoval)
             for (int i = 0; i < deadEndRemovalPasses; i++)
@@ -128,16 +128,7 @@ public class GridManager : MonoBehaviour
         
     private void Start()
     {
-        for (int i = 0; i < (finalSize / 4 * 3 + 1) * (finalSize + 1); i++)
-        {
-            Vector2 location;
-            location.x = (i % (finalSize + 1)) * spacing;
-            location.y = (i / (finalSize + 1)) * spacing;
-            GameObject t = Instantiate(tilePrefab, transform.position + (Vector3)location, Quaternion.identity);
-            t.transform.localScale *= spacing;
-            SpriteRenderer sr = t.GetComponentInChildren<SpriteRenderer>();
-            sr.color = finalTiles[i].colour;
-        }
+        SetTiles(ref finalTiles);
         
         p = Instantiate(playerPrefab).GetComponent<Player>();
         p.Initialize(playerPos, transform.position + (Vector3)(Vector2)playerPos * spacing);
@@ -156,6 +147,30 @@ public class GridManager : MonoBehaviour
                 transform.position + (Vector3)(Vector2)enemyPos * spacing);
             d.ResetTimer();
             d.Begin();
+        }
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            screenPosition = Input.mousePosition;
+            worldPosition = mainCamera.ScreenToWorldPoint(screenPosition) + new Vector3(0, 0, 10);
+
+            int closestIndex = finalSize + 2;
+            Vector3 closestPos = new Vector3(1, 1) * spacing + transform.position;
+            for (int i = 0; i < finalTiles.Count; i++)
+            {
+                
+                Vector3 tilePos = new Vector3(i % (finalSize + 1), (float)i / (finalSize + 1)) * spacing +
+                                  transform.position;
+                if (!finalTiles[i].isWall &&
+                    (tilePos - worldPosition).magnitude < (closestPos - worldPosition).magnitude)
+                {
+                    closestPos = new Vector3(i % (finalSize + 1), (float)i / (finalSize + 1)) * spacing +
+                                 transform.position;
+                    closestIndex = i;
+                }
+            }
+            
+            d.SetCursorAsGoal(new Vector2Int((int)MathF.Round(closestPos.x), (int)MathF.Round(closestPos.y)));
         }
     }
 
@@ -390,11 +405,34 @@ public class GridManager : MonoBehaviour
             float distance = (curTilePos - inVNodes[i]).magnitude;
             if (distance < shortest)
                 shortest = distance;
-            
         }
         return shortest;
     }
-    
+
+    private void SetTiles(ref List<DTile> tiles)
+    {
+        Tile floor = ScriptableObject.CreateInstance<Tile>();
+        Tile wall = ScriptableObject.CreateInstance<Tile>();
+        floor.sprite = sprites[0];
+        wall.sprite = sprites[1];
+
+        floors.transform.position = transform.position - new Vector3(spacing, spacing) / 2;
+        walls.transform.position = transform.position - new Vector3(spacing, spacing) / 2;
+        grid.cellSize = new Vector3(spacing, spacing);
+
+        for(int y = 0; y < finalSize / 4 * 3 + 1; y++)
+            for (int x = 0; x < finalSize +1 ; x++)
+            {
+                if(tiles[y * (finalSize + 1) + x].isWall)
+                    walls.SetTile(new Vector3Int(x, y, 0), wall);
+                else
+                {
+                    floor.color = tiles[y * (finalSize + 1) + x].colour;
+                    floors.SetTile(new Vector3Int(x, y, 0), floor);
+                }
+            }
+    }
+
     public bool CheckTile(Vector2Int tile)
     {
         if (tile.y * (finalSize + 1) + tile.x >= finalTiles.Count || tile.y * (finalSize + 1) + tile.x < 0)
