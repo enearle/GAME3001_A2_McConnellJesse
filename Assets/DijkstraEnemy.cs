@@ -28,7 +28,7 @@ public class DijkstraEnemy : Character
     
     private void Awake()
     {
-        size = MazeGen.Instance.GetSize();
+        size = GridManager.Instance.GetSize();
         for (int i = 0; i < size * size; i++)
         {
             nodes.Add(new DNode());
@@ -50,11 +50,11 @@ public class DijkstraEnemy : Character
         
         TryMove(path[pathIndex].curGridPos - gridPosition);
 
-        if(MazeGen.Instance.Debug)
+        if(GridManager.Instance.Debug)
             foreach (var dn in path)
                 if(dn.parentNode != originNode)
-                    Debug.DrawLine(MazeGen.Instance.transform.position + Vector3.back + (Vector3)(Vector2)nodes[dn.parentNode].curGridPos * MazeGen.Instance.MoveScale(),
-                        MazeGen.Instance.transform.position + Vector3.back + (Vector3)(Vector2)dn.curGridPos * MazeGen.Instance.MoveScale(), Color.magenta);
+                    Debug.DrawLine(GridManager.Instance.transform.position + Vector3.back + (Vector3)(Vector2)nodes[dn.parentNode].curGridPos * GridManager.Instance.MoveScale(),
+                        GridManager.Instance.transform.position + Vector3.back + (Vector3)(Vector2)dn.curGridPos * GridManager.Instance.MoveScale(), Color.magenta);
         
         base.Update();
     }
@@ -73,7 +73,7 @@ public class DijkstraEnemy : Character
         originNode = gridPosition.y * size + gridPosition.x;
         found = false;
         
-        playerPos = MazeGen.Instance.GetPlayerGridPos();
+        playerPos = GridManager.Instance.GetPlayerGridPos();
         
         nodes[0].cost = 0;
         nodes[0].parentNode = -1;
@@ -111,13 +111,13 @@ public class DijkstraEnemy : Character
 
         foreach (var a in adjacents)
         {
-            if (a.y * size + a.x != node.parentNode && MazeGen.Instance.CheckTile(a))
+            if (a.y * size + a.x != node.parentNode && GridManager.Instance.CheckTile(a))
             {
                 nodes[a.y * size + a.x].curGridPos = a;
-                if (nodes[a.y * size + a.x].cost > node.cost + MazeGen.Instance.GetTileCost(a))
+                if (nodes[a.y * size + a.x].cost > node.cost + GridManager.Instance.GetTileCost(a))
                 {
                     nodes[a.y * size + a.x].parentNode = node.curGridPos.y * size + node.curGridPos.x;
-                    nodes[a.y * size + a.x].cost = node.cost + MazeGen.Instance.GetTileCost(a);
+                    nodes[a.y * size + a.x].cost = node.cost + GridManager.Instance.GetTileCost(a);
                     searchHorizon.Enqueue(nodes[a.y * size + a.x], nodes[a.y * size + a.x].cost);
                 }
             }

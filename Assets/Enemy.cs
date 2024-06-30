@@ -31,7 +31,7 @@ public class Enemy : Character
         ClearExplored();
         queueCounter = 0;
         
-        playerPos = MazeGen.Instance.GetPlayerGridPos();
+        playerPos = GridManager.Instance.GetPlayerGridPos();
         
         BNode start = new BNode();
         start.curGridPos = gridPosition;
@@ -63,7 +63,7 @@ public class Enemy : Character
         Vector2Int right = node.curGridPos + Vector2Int.right;
         Vector2Int left = node.curGridPos + Vector2Int.left;
 
-        if (MazeGen.Instance.CheckTile(up) && !explored[up.x, up.y])
+        if (GridManager.Instance.CheckTile(up) && !explored[up.x, up.y])
         {
             BNode newNode = new BNode();
             newNode.parentNode = node;
@@ -71,7 +71,7 @@ public class Enemy : Character
             searchHorizon.Enqueue(newNode);
         }
         
-        if (MazeGen.Instance.CheckTile(down) && !explored[down.x, down.y])
+        if (GridManager.Instance.CheckTile(down) && !explored[down.x, down.y])
         {
             BNode newNode = new BNode();
             newNode.parentNode = node;
@@ -79,7 +79,7 @@ public class Enemy : Character
             searchHorizon.Enqueue(newNode);
         }
         
-        if (MazeGen.Instance.CheckTile(left) && !explored[left.x, left.y])
+        if (GridManager.Instance.CheckTile(left) && !explored[left.x, left.y])
         {
             BNode newNode = new BNode();
             newNode.parentNode = node;
@@ -87,7 +87,7 @@ public class Enemy : Character
             searchHorizon.Enqueue(newNode);
         }
         
-        if (MazeGen.Instance.CheckTile(right) && !explored[right.x, right.y])
+        if (GridManager.Instance.CheckTile(right) && !explored[right.x, right.y])
         {
             BNode newNode = new BNode();
             newNode.parentNode = node;
@@ -128,8 +128,8 @@ public class Enemy : Character
         foreach (var dn in path)
         {
             if(dn.parentNode != null)
-                Debug.DrawLine(MazeGen.Instance.transform.position + Vector3.back + (Vector3)(Vector2)dn.parentNode.curGridPos * MazeGen.Instance.MoveScale(),
-                    MazeGen.Instance.transform.position + Vector3.back + (Vector3)(Vector2)dn.curGridPos * MazeGen.Instance.MoveScale(), Color.magenta);
+                Debug.DrawLine(GridManager.Instance.transform.position + Vector3.back + (Vector3)(Vector2)dn.parentNode.curGridPos * GridManager.Instance.MoveScale(),
+                    GridManager.Instance.transform.position + Vector3.back + (Vector3)(Vector2)dn.curGridPos * GridManager.Instance.MoveScale(), Color.magenta);
         }
         
         base.Update();
@@ -137,8 +137,8 @@ public class Enemy : Character
 
     private void ClearExplored()
     {
-        for(int y = 0; y < MazeGen.Instance.GetSize(); y++)
-            for (int x = 0; x < MazeGen.Instance.GetSize(); x++)
+        for(int y = 0; y < GridManager.Instance.GetSize(); y++)
+            for (int x = 0; x < GridManager.Instance.GetSize(); x++)
                 explored[x, y] = false;
     }
 }

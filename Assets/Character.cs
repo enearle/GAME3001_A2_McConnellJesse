@@ -16,22 +16,22 @@ public class Character : MonoBehaviour
     {
         gridPosition = gridPos;
         transform.position = pos;
-        transform.localScale  = Vector3.one * MazeGen.Instance.MoveScale();
+        transform.localScale  = Vector3.one * GridManager.Instance.MoveScale();
     }
     
     protected void TryMove(Vector2Int direction)
     {
-        if(!moving && MazeGen.Instance.CheckTile(gridMove = direction + gridPosition))
+        if(!moving && GridManager.Instance.CheckTile(gridMove = direction + gridPosition))
         {
             moving = true;
-            moveTo = (Vector3)(Vector2)(direction+ gridPosition) * MazeGen.Instance.MoveScale() + MazeGen.Instance.transform.position;
+            moveTo = (Vector3)(Vector2)(direction+ gridPosition) * GridManager.Instance.MoveScale() + GridManager.Instance.transform.position;
         }
     }
     protected virtual void Update()
     {
         if (moving)
         {
-            time += Time.deltaTime * 5 / MazeGen.Instance.GetMoveCost(gridPosition);
+            time += Time.deltaTime * 5 / GridManager.Instance.GetMoveCost(gridPosition);
             transform.position = Vector3.Lerp(transform.position, moveTo, time);
             if (time >= 1)
             {
