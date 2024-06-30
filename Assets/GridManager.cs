@@ -38,7 +38,7 @@ public class GridManager : MonoBehaviour
     private bool trueFractal = false;
     [SerializeField, Tooltip("Use 5 space per second move speed.")] 
     private bool flatMoveSpeed = false;
-    [FormerlySerializedAs("debug")] [SerializeField] private bool isDebug = false;
+    [SerializeField] private bool isDebug = false;
     [SerializeField] private GameObject playerPrefab;
     [SerializeField] private GameObject enemyPrefab;
     [SerializeField] private bool disableRandomPasses = false;
@@ -47,6 +47,7 @@ public class GridManager : MonoBehaviour
     [SerializeField] private bool disableDeadEndRemoval = false;
     [SerializeField] private Tilemap floors;
     [SerializeField] private Tilemap walls;
+    [SerializeField] private Tilemap tilesDebug;
     [SerializeField] private Grid grid;
     [SerializeField] private Sprite[] sprites;
     private List<int> explored = new List<int>();
@@ -60,6 +61,7 @@ public class GridManager : MonoBehaviour
     private Vector3 screenPosition;
     private Vector3 worldPosition;
     private Camera mainCamera;
+    private List<bool> searchedTiles;
     
     private void Awake()
     {
@@ -153,24 +155,24 @@ public class GridManager : MonoBehaviour
         {
             screenPosition = Input.mousePosition;
             worldPosition = mainCamera.ScreenToWorldPoint(screenPosition) + new Vector3(0, 0, 10);
-            
-            worldPosition -= transform.position;
+            worldPosition -= transform.position - new Vector3 (spacing, spacing) / 2;
             worldPosition /= spacing;
+            worldPosition = new Vector3((int)worldPosition.x, (int)worldPosition.y);
             
-            Vector3 closestPos = new Vector3(1, 1) * spacing;
+            Vector3 closestPos = new Vector3(1, 1);
             
             for (int i = 0; i < finalTiles.Count; i++)
             {
+                Vector3 tilePos = new Vector3(i % (finalSize + 1), i / (finalSize + 1));
                 
-                Vector3 tilePos = new Vector3(i % (finalSize + 1), (float)i / (finalSize + 1));
                 if (!finalTiles[i].isWall &&
                     (tilePos - worldPosition).magnitude < (closestPos - worldPosition).magnitude)
                 {
-                    closestPos = new Vector3(i % (finalSize + 1), (float)i / (finalSize + 1));
+                    closestPos = new Vector3(i % (finalSize + 1), i / (finalSize + 1));
                 }
             }
-            
-            d.SetCursorAsGoal(new Vector2Int((int)MathF.Round(closestPos.x), (int)MathF.Round(closestPos.y)));
+
+            d.SetCursorAsGoal(new Vector2Int((int)closestPos.x, (int)closestPos.y));
         }
     }
 
@@ -418,6 +420,7 @@ public class GridManager : MonoBehaviour
 
         floors.transform.position = transform.position - new Vector3(spacing, spacing) / 2;
         walls.transform.position = transform.position - new Vector3(spacing, spacing) / 2;
+        tilesDebug.transform.position = transform.position - new Vector3(spacing, spacing) / 2;
         grid.cellSize = new Vector3(spacing, spacing);
 
         for(int y = 0; y < finalSize / 4 * 3 + 1; y++)
@@ -430,6 +433,21 @@ public class GridManager : MonoBehaviour
                     floor.color = tiles[y * (finalSize + 1) + x].colour;
                     floors.SetTile(new Vector3Int(x, y, 0), floor);
                 }
+            }
+    }
+
+    public void SetDebugTiles(List<bool> tiles)
+    {
+        Tile t = ScriptableObject.CreateInstance<Tile>();
+        t.sprite = sprites[0];
+        
+        for(int y = 0; y < finalSize / 4 * 3 + 1; y++)
+            for (int x = 0; x < finalSize + 1; x++)
+            {
+                if(tiles[y * (finalSize + 1) + x])
+                    tilesDebug.SetTile(new Vector3Int(x, y, 0), t);
+                else
+                    tilesDebug.SetTile(new Vector3Int(x, y, 0), null);
             }
     }
 

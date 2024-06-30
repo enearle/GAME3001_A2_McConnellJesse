@@ -48,6 +48,7 @@
     <Compile Include="Assets\GridManager.cs" />
     <Compile Include="Assets\Player.cs" />
     <Compile Include="Assets\PriorityQueue.cs" />
+    <Compile Include="Assets\PathManager.cs" />
     <Compile Include="Assets\DijkstraEnemy.cs" />
     <Compile Include="Assets\Enemy.cs" />
     <Compile Include="Assets\Character.cs" />
