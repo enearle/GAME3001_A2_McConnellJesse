@@ -5,13 +5,13 @@ using Unity.VisualScripting;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-public class Tile
+public class DTile
 {
     public bool isWall;
     public int cost;
     public Color colour;
 
-    public Tile(bool w, int c, Color col)
+    public DTile(bool w, int c, Color col)
     {
         isWall = w;
         cost = c;
@@ -33,8 +33,8 @@ public class MazeGen : MonoBehaviour
     private float powerTwoPassCoef = 0.02f;
     [SerializeField, Tooltip("Removes dead-ends. Number of unbiased passes over entire grid. I don't think if biasing matters here, but I prevented it anyway.")] 
     private int deadEndRemovalPasses = 2; 
-    [SerializeField, Tooltip("Tile scale.")] 
-    private float spacing = 0.2f;
+    //[SerializeField, Tooltip("Tile scale.")] 
+    private float spacing = 0.16f * 0.95f;
     [SerializeField, Tooltip("Revert to base Fractal Maze algorithm.")] 
     private bool trueFractal = false;
     [SerializeField, Tooltip("Use 5 space per second move speed.")] 
@@ -51,10 +51,11 @@ public class MazeGen : MonoBehaviour
     private List<int> removableWalls = new List<int>();
     private Vector2Int playerPos = new Vector2Int(1, 1);
     private Vector2Int enemyPos;
-    private List<Tile> finalTiles = new List<Tile>();
+    private List<DTile> finalTiles = new List<DTile>();
     private Player p;
     private DijkstraEnemy d;
     
+    // Initialize and start maze gen
     private void Awake()
     {
         if (Instance == null)
@@ -102,17 +103,17 @@ public class MazeGen : MonoBehaviour
         for(int y = 0; y < finalSize + 1; y++)
             for(int x = 0; x < finalSize + 1; x++)
                 if((x == finalSize || y == finalSize) || fractalTiles[y * finalSize + x])
-                    finalTiles.Add(new Tile(true, Int32.MaxValue, Color.black));
+                    finalTiles.Add(new DTile(true, Int32.MaxValue, Color.black));
                 else
                     if(debug)
-                        finalTiles.Add(new Tile(false, (int)Mathf.Round(DistToNearestVNode(voronoiNodes, new Vector2Int(x,y))), 
+                        finalTiles.Add(new DTile(false, (int)Mathf.Round(DistToNearestVNode(voronoiNodes, new Vector2Int(x,y))), 
                                 new Color(1, 
                                     0.5f, 
                                     1)
                             )
                         );
                     else
-                        finalTiles.Add(new Tile(false, (int)Mathf.Round(DistToNearestVNode(voronoiNodes, new Vector2Int(x,y))), 
+                        finalTiles.Add(new DTile(false, (int)Mathf.Round(DistToNearestVNode(voronoiNodes, new Vector2Int(x,y))), 
                                 new Color(1 - DistToNearestVNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f, 
                                     1 - DistToNearestVNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f / 2, 
                                     0.5f + DistToNearestVNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f / 2)
@@ -126,6 +127,9 @@ public class MazeGen : MonoBehaviour
         
     private void Start()
     {
+        //GridManager.Instance.SetTiles(ref finalTiles);
+        //GridManager.Instance.SpawnCharacters();
+        
         for (int i = 0; i < (finalSize + 1) * (finalSize + 1); i++)
         {
             Vector2 location;
@@ -146,6 +150,7 @@ public class MazeGen : MonoBehaviour
         d.Begin();
     }
 
+    // Listen for inputs
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.Space))
@@ -156,7 +161,8 @@ public class MazeGen : MonoBehaviour
             d.Begin();
         }
     }
-
+    
+    // Utility functions for maze generation
     private List<bool> Fractal(List<bool> inPattern, int curSize)
     {
         if (inPattern.Count >= finalSize * finalSize)
@@ -266,7 +272,7 @@ public class MazeGen : MonoBehaviour
         }
     }
 
-    private void DeadEndRemoval(ref List<Tile> tiles)
+    private void DeadEndRemoval(ref List<DTile> tiles)
     {
         for(int i = 0; i < 2; i++)
             for(int y = 1; y < finalSize + 1; y += 2)
@@ -354,30 +360,14 @@ public class MazeGen : MonoBehaviour
             tiles[i] = newTiles[i];
     }
     
-    private bool RandomBool()
-    {
-        return Random.Range(0, 2) % 2 == 1;
-    }
-
-    public bool CheckTile(Vector2Int tile)
-    {
-        
-        if (tile.y * (finalSize + 1) + tile.x >= finalTiles.Count || tile.y * (finalSize + 1) + tile.x < 0)
-        {
-            return false;
-        }
-        else
-            return !finalTiles[tile.y * (finalSize + 1) + tile.x].isWall;
-    }
-
     private List<Vector2Int> GenerateVoronoiNodes()
     {
         List<Vector2Int> outVNodes = new List<Vector2Int>();
         for(int y = 0; y < finalSize; y += 32 )
-            for (int x = 0; x < finalSize; x += 32)
-            {
-                outVNodes.Add(new Vector2Int(x + Random.Range(8, 24), y + Random.Range(8, 24)));
-            }
+        for (int x = 0; x < finalSize; x += 32)
+        {
+            outVNodes.Add(new Vector2Int(x + Random.Range(8, 24), y + Random.Range(8, 24)));
+        }
 
         return outVNodes;
     }
@@ -395,6 +385,23 @@ public class MazeGen : MonoBehaviour
         }
         return shortest;
     }
+    
+    private bool RandomBool()
+    {
+        return Random.Range(0, 2) % 2 == 1;
+    }
+    
+    // Public functions
+    public bool CheckTileIsWall(Vector2Int tile)
+    {
+        
+        if (tile.y * (finalSize + 1) + tile.x >= finalTiles.Count || tile.y * (finalSize + 1) + tile.x < 0)
+        {
+            return false;
+        }
+        else
+            return !finalTiles[tile.y * (finalSize + 1) + tile.x].isWall;
+    }
 
     public int GetTileCost(Vector2Int tile)
     {
@@ -409,7 +416,7 @@ public class MazeGen : MonoBehaviour
         return 1 + finalTiles[tile.y * (finalSize + 1) + tile.x].cost / 10;
     }
     
-    public float MoveScale()
+    public float SpacingScale()
     {
         return spacing;
     }

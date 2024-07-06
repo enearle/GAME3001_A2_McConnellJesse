@@ -16,15 +16,15 @@ public class Character : MonoBehaviour
     {
         gridPosition = gridPos;
         transform.position = pos;
-        transform.localScale  = Vector3.one * MazeGen.Instance.MoveScale();
+        transform.localScale  = Vector3.one * MazeGen.Instance.SpacingScale();
     }
     
     protected void TryMove(Vector2Int direction)
     {
-        if(!moving && MazeGen.Instance.CheckTile(gridMove = direction + gridPosition))
+        if(!moving && MazeGen.Instance.CheckTileIsWall(gridMove = direction + gridPosition))
         {
             moving = true;
-            moveTo = (Vector3)(Vector2)(direction+ gridPosition) * MazeGen.Instance.MoveScale() + MazeGen.Instance.transform.position;
+            moveTo = (Vector3)(Vector2)(direction + gridPosition) * MazeGen.Instance.SpacingScale() + MazeGen.Instance.transform.position;
         }
     }
     protected virtual void Update()

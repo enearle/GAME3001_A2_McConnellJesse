@@ -63,7 +63,7 @@ public class Enemy : Character
         Vector2Int right = node.curGridPos + Vector2Int.right;
         Vector2Int left = node.curGridPos + Vector2Int.left;
 
-        if (MazeGen.Instance.CheckTile(up) && !explored[up.x, up.y])
+        if (MazeGen.Instance.CheckTileIsWall(up) && !explored[up.x, up.y])
         {
             BNode newNode = new BNode();
             newNode.parentNode = node;
@@ -71,7 +71,7 @@ public class Enemy : Character
             searchHorizon.Enqueue(newNode);
         }
         
-        if (MazeGen.Instance.CheckTile(down) && !explored[down.x, down.y])
+        if (MazeGen.Instance.CheckTileIsWall(down) && !explored[down.x, down.y])
         {
             BNode newNode = new BNode();
             newNode.parentNode = node;
@@ -79,7 +79,7 @@ public class Enemy : Character
             searchHorizon.Enqueue(newNode);
         }
         
-        if (MazeGen.Instance.CheckTile(left) && !explored[left.x, left.y])
+        if (MazeGen.Instance.CheckTileIsWall(left) && !explored[left.x, left.y])
         {
             BNode newNode = new BNode();
             newNode.parentNode = node;
@@ -87,7 +87,7 @@ public class Enemy : Character
             searchHorizon.Enqueue(newNode);
         }
         
-        if (MazeGen.Instance.CheckTile(right) && !explored[right.x, right.y])
+        if (MazeGen.Instance.CheckTileIsWall(right) && !explored[right.x, right.y])
         {
             BNode newNode = new BNode();
             newNode.parentNode = node;
@@ -128,8 +128,8 @@ public class Enemy : Character
         foreach (var dn in path)
         {
             if(dn.parentNode != null)
-                Debug.DrawLine(MazeGen.Instance.transform.position + Vector3.back + (Vector3)(Vector2)dn.parentNode.curGridPos * MazeGen.Instance.MoveScale(),
-                    MazeGen.Instance.transform.position + Vector3.back + (Vector3)(Vector2)dn.curGridPos * MazeGen.Instance.MoveScale(), Color.magenta);
+                Debug.DrawLine(MazeGen.Instance.transform.position + Vector3.back + (Vector3)(Vector2)dn.parentNode.curGridPos * MazeGen.Instance.SpacingScale(),
+                    MazeGen.Instance.transform.position + Vector3.back + (Vector3)(Vector2)dn.curGridPos * MazeGen.Instance.SpacingScale(), Color.magenta);
         }
         
         base.Update();
