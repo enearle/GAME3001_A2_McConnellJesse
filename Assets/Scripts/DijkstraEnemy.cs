@@ -1,11 +1,10 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
-using UnityEngine.Rendering;
 using Utils;
 
+/*
+ * This class uses makes calls to the Grid Manager and Path Manager to drive the inherited character behaviour.
+ */
 public class DijkstraEnemy : Character
 {
     private PriorityQueue<DNode, int> searchHorizon = new PriorityQueue<DNode, int>();
@@ -39,12 +38,14 @@ public class DijkstraEnemy : Character
             if (timer >= resetTime)
             {
                 ResetTimer();
+                goal = GridManager.Instance.GetPlayerGridPos();
                 path = PathManager.GetPath(goal, gridPosition, size, size / 4 * 3 + size % 4);
+                Debug.Log("called");
+                GridManager.Instance.SetDebugTiles(path);
                 pathIndex = 0;
             }
         }
         
-        Debug.Log($"{pathIndex}/{path.pathList.Count} --- {gridPosition}");
         if (gridPosition == path.pathList[pathIndex].curGridPos)
             pathIndex++;
         
@@ -54,18 +55,11 @@ public class DijkstraEnemy : Character
             ResetTimer();
             goal = GridManager.Instance.GetPlayerGridPos();
             path = PathManager.GetPath(goal, gridPosition, size, size / 4 * 3 + size % 4);
+            GridManager.Instance.SetDebugTiles(path);
             pathIndex = 0;
         }
         
-
         TryMove(path.pathList[pathIndex].curGridPos - gridPosition);
-
-
-        if(GridManager.Instance.IsDebug)
-            foreach (var dn in path.pathList)
-                if(dn.parentNode != originNode)
-                    Debug.DrawLine(GridManager.Instance.transform.position + Vector3.back + (Vector3)(Vector2)nodes[dn.parentNode].curGridPos * GridManager.Instance.MoveScale(),
-                        GridManager.Instance.transform.position + Vector3.back + (Vector3)(Vector2)dn.curGridPos * GridManager.Instance.MoveScale(), Color.magenta);
         
         base.Update();
     }
@@ -74,6 +68,8 @@ public class DijkstraEnemy : Character
     {
         goal = GridManager.Instance.GetPlayerGridPos();
         path = PathManager.GetPath(goal, gridPosition, size, size / 4 * 3 + size % 4);
+        GridManager.Instance.SetDebugTiles(path);
+        pathIndex = 0;
     }
 
     public void ResetTimer()
@@ -84,9 +80,10 @@ public class DijkstraEnemy : Character
     public void SetCursorAsGoal(Vector2Int pos)
     {
         chasingCursor = true;
+        ResetTimer();
         goal = pos;
         path = PathManager.GetPath(goal, gridPosition, size, size / 4 * 3 + size % 4);
+        GridManager.Instance.SetDebugTiles(path);
         pathIndex = 0;
-        Debug.Log(pos);
     }
 }

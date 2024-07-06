@@ -24,7 +24,7 @@ public class Character : MonoBehaviour
         if(!moving && GridManager.Instance.CheckTile(gridMove = direction + gridPosition))
         {
             moving = true;
-            moveTo = (Vector3)(Vector2)(direction+ gridPosition) * GridManager.Instance.MoveScale() + GridManager.Instance.transform.position;
+            moveTo = (Vector3)(Vector2)(direction + gridPosition) * GridManager.Instance.MoveScale() + GridManager.Instance.transform.position;
         }
     }
     protected virtual void Update()
@@ -32,7 +32,7 @@ public class Character : MonoBehaviour
         if (moving)
         {
             time += Time.deltaTime * 5 / GridManager.Instance.GetMoveCost(gridPosition);
-            transform.position = Vector3.Lerp(transform.position, moveTo, time);
+            transform.position = Vector3.Lerp(transform.position, moveTo, time / 15);
             if (time >= 1)
             {
                 transform.position = moveTo;

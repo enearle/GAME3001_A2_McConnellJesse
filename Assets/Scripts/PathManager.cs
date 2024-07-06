@@ -3,6 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Utils;
+
+/*
+ * This class uses Dijkstra's algorithm to find a path through maze created by the Grid Manager.
+ */
+
 public class DNode
 {
     public int parentNode = -1;
@@ -82,7 +87,6 @@ public static class PathManager
         {
             path = Retrace(node); 
             path.Reverse();
-            Debug.Log(path.Count);
             found = true;
             return;
         }

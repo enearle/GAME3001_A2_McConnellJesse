@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
 using UnityEngine.Tilemaps;
 using Random = UnityEngine.Random;
+
+/*
+ * This class procedurally generates a maze using the Fractal Tessellation algorithm. Fractal components of the maze
+ * are further randomized with matrix transformations before linking. 
+ */
 
 public class DTile
 {
@@ -50,6 +54,7 @@ public class GridManager : MonoBehaviour
     [SerializeField] private Tilemap tilesDebug;
     [SerializeField] private Grid grid;
     [SerializeField] private Sprite[] sprites;
+    [SerializeField] private Sprite[] debugSprites;
     private List<int> explored = new List<int>();
     public bool IsDebug { get { return isDebug; } private set {}}
     private List<int> removableWalls = new List<int>();
@@ -62,6 +67,7 @@ public class GridManager : MonoBehaviour
     private Vector3 worldPosition;
     private Camera mainCamera;
     private List<bool> searchedTiles;
+    
     
     private void Awake()
     {
@@ -116,10 +122,10 @@ public class GridManager : MonoBehaviour
                 if((x == finalSize || y == finalSize / 4 * 3) || fractalTiles[y * finalSize + x])
                     finalTiles.Add(new DTile(true, Int32.MaxValue, Color.black));
                 else
-                    finalTiles.Add(new DTile(false, (int)Mathf.Round(DistToNearestVNode(voronoiNodes, new Vector2Int(x,y))), 
+                    finalTiles.Add(new DTile(false, (int)Mathf.Round(DistToNearestVoronoiNode(voronoiNodes, new Vector2Int(x,y))), 
                             new Color(1, 
-                                1 - DistToNearestVNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f, 
-                                1 - DistToNearestVNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f)
+                                1 - DistToNearestVoronoiNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f, 
+                                1 - DistToNearestVoronoiNode(voronoiNodes, new Vector2Int(x,y)) / 33.94f)
                         )
                     );
         
@@ -176,6 +182,7 @@ public class GridManager : MonoBehaviour
         }
     }
 
+    // Generation Code
     private List<bool> Fractal(List<bool> inPattern, int curSize)
     {
         if (inPattern.Count >= finalSize * finalSize)
@@ -345,15 +352,6 @@ public class GridManager : MonoBehaviour
                 }
     }
 
-    private void ThreeQuarterChop(ref List<bool> tiles)
-    {
-        List<bool> newTiles = new List<bool>();
-        for(int y = 0; y < finalSize / 4 * 3; y++)
-            for(int x = 0; x < finalSize; x++)
-                newTiles.Add(tiles[y * finalSize + x]);
-        tiles = new List<bool>(newTiles);
-    }
-
     private void TransposeMatrix(ref List<bool> tiles, int xStart, int xEnd, int yStart, int yEnd, int curSize)
     {
         for (int y = 0; y < curSize / 2 - 1; y++)
@@ -381,11 +379,6 @@ public class GridManager : MonoBehaviour
         for (int i = 0; i < tiles.Count; i++)
             tiles[i] = newTiles[i];
     }
-    
-    private bool RandomBool()
-    {
-        return Random.Range(0, 2) % 2 == 1;
-    }
 
     private List<Vector2Int> GenerateVoronoiNodes()
     {
@@ -398,7 +391,7 @@ public class GridManager : MonoBehaviour
 
         return outVNodes;
     }
-    private float DistToNearestVNode(List<Vector2Int> inVNodes, Vector2Int curTilePos)
+    private float DistToNearestVoronoiNode(List<Vector2Int> inVNodes, Vector2Int curTilePos)
     {
         float shortest = (curTilePos - inVNodes[0]).magnitude;
 
@@ -410,7 +403,17 @@ public class GridManager : MonoBehaviour
         }
         return shortest;
     }
+    
+    private void ThreeQuarterChop(ref List<bool> tiles)
+    {
+        List<bool> newTiles = new List<bool>();
+        for(int y = 0; y < finalSize / 4 * 3; y++)
+            for(int x = 0; x < finalSize; x++)
+                newTiles.Add(tiles[y * finalSize + x]);
+        tiles = new List<bool>(newTiles);
+    }
 
+    // Tilemap
     private void SetTiles(ref List<DTile> tiles)
     {
         Tile floor = ScriptableObject.CreateInstance<Tile>();
@@ -435,22 +438,58 @@ public class GridManager : MonoBehaviour
                 }
             }
     }
-
-    public void SetDebugTiles(List<bool> tiles)
+    
+    // Debug
+    public void SetDebugTiles(PathStruct tiles)
     {
-        Tile t = ScriptableObject.CreateInstance<Tile>();
-        t.sprite = sprites[0];
-        
-        for(int y = 0; y < finalSize / 4 * 3 + 1; y++)
-            for (int x = 0; x < finalSize + 1; x++)
-            {
-                if(tiles[y * (finalSize + 1) + x])
-                    tilesDebug.SetTile(new Vector3Int(x, y, 0), t);
-                else
-                    tilesDebug.SetTile(new Vector3Int(x, y, 0), null);
-            }
-    }
+        if (isDebug)
+        {
+            Tile t = ScriptableObject.CreateInstance<Tile>();
+            t.sprite = sprites[0];
+            t.color = Color.blue;
 
+            for (int y = 0; y < finalSize / 4 * 3 + 1; y++)
+                for (int x = 0; x < finalSize + 1; x++)
+                {
+                    if (tiles.searchedList[y * (finalSize + 1) + x])
+                        tilesDebug.SetTile(new Vector3Int(x, y, 0), t);
+                    else
+                        tilesDebug.SetTile(new Vector3Int(x, y, 0), null);
+                }
+
+            t.color = Color.cyan;
+            foreach (var pNode in tiles.pathList)
+            {
+                tilesDebug.SetTile(new Vector3Int(pNode.curGridPos.x, pNode.curGridPos.y, 0), null);
+                tilesDebug.SetTile(new Vector3Int(pNode.curGridPos.x, pNode.curGridPos.y, 0), t);
+            }
+            
+            /*
+            for(int y = 0; y < finalSize / 4 * 3 + 1; y++)
+                for (int x = 0; x < finalSize + 1; x++)
+                {
+                    Vector2 screenLoc = mainCamera.WorldToScreenPoint(transform.position + new Vector3(x,y) * spacing);
+                    if(tiles.searchedList[y * (finalSize + 1) + x])
+                        Gizmos.DrawGUITexture(screenLoc,debugSprites[0]);
+                    else
+                        tilesDebug.SetTile(new Vector3Int(x, y, 0), null);
+                }
+
+                t.color = Color.cyan;
+                foreach (var pNode in tiles.pathList)
+                {
+                    tilesDebug.SetTile(new Vector3Int(pNode.curGridPos.x, pNode.curGridPos.y, 0), null);
+                    tilesDebug.SetTile(new Vector3Int(pNode.curGridPos.x, pNode.curGridPos.y, 0), t);
+                }*/
+        }
+    }
+    
+    private bool RandomBool()
+    {
+        return Random.Range(0, 2) % 2 == 1;
+    }
+    
+    // Public functions
     public bool CheckTile(Vector2Int tile)
     {
         if (tile.y * (finalSize + 1) + tile.x >= finalTiles.Count || tile.y * (finalSize + 1) + tile.x < 0)

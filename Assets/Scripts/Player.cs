@@ -2,6 +2,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/*
+ * This class uses input polling to drive the inherited character behaviour.
+ */
+
 public class Player : Character
 {
     // Update is called once per frame
